@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Budget - Finance Model</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Firebase Cloud SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+    <!-- SECURE LOGIN SCREEN -->
+    <div id="login-view" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; text-align:center;">
+        <i data-lucide="shield-check" style="width: 64px; height: 64px; color: var(--accent); margin-bottom: 1rem;"></i>
+        <h1 style="font-size: 2rem; margin-bottom: 0.5rem; color: #fff;">Personal Budget</h1>
+        <p class="text-subtle mb-4">Secure Cloud End-to-End Synchronization</p>
+        <button id="google-login-btn" class="btn" style="display:flex; align-items:center; gap:0.5rem; padding: 0.75rem 1.5rem; font-size:1.1rem; background: #fff; color: #000;">
+            <svg style="width:24px;height:24px;" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> 
+            Secure Google Login
+        </button>
+
+        <div style="max-width: 450px; margin-top: 3rem; padding: 1rem; background: rgba(0,0,0,0.5); border: 1px solid var(--card-border); border-radius: 8px; font-size: 0.65rem; color: var(--text-secondary); text-align: justify; line-height: 1.4;">
+            <strong>TERMS OF USE & FINANCIAL DISCLAIMER</strong><br><br>
+            By logging into this application, you expressly acknowledge and agree that this software is provided strictly AS-IS and is intended for informational and educational purposes only. It does not constitute professional accounting, tax, or financial advice. The models, projections, and calculations presented herein are algorithmic estimates and may contain errors. 
+            <br><br>
+            The creator and distributor of this tool accept zero liability for any financial decisions made based on this application, nor for any loss, damage, or discrepancy resulting from its use. 
+            <strong>You are solely responsible for verifying your finances through certified professional institutions.</strong>
+        </div>
+    </div>
+
+    <!-- MAIN APP SCREEN (Revealed upon auth) -->
+    <div id="app-view" style="display:none;">
+
+    <main class="app-container">
+        <header style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+            <div style="width: 40px;"></div> <!-- Spacer for center alignment -->
+            <div style="text-align: center;">
+                <h1>Personal Budget</h1>
+                <p style="margin:0;">Cash Flow & Net Worth Model</p>
+            </div>
+            <button class="btn" style="background: transparent; border: 1px solid var(--card-border); padding: 0.6rem; color: var(--text-secondary);" onclick="openImportModal()" title="Mass Import Transactions">
+                <i data-lucide="file-up"></i>
+            </button>
+        </header>
+
+        <!-- Tab Navigation -->
+        <nav class="tabs">
+            <button class="tab-btn active" data-target="tab-dashboard"><i data-lucide="layout-dashboard"></i> Dashboard</button>
+            <button class="tab-btn" data-target="tab-transactions"><i data-lucide="list-ordered"></i> Transactions</button>
+            <button class="tab-btn" data-target="tab-accounts"><i data-lucide="credit-card"></i> Accounts</button>
+            <button class="tab-btn" data-target="tab-stocks"><i data-lucide="trending-up"></i> Stocks</button>
+            <button class="tab-btn" data-target="tab-settings"><i data-lucide="settings"></i> Settings</button>
+        </nav>
+
+        <!-- Dashboard View -->
+        <section id="tab-dashboard" class="tab-content active">
+            <div class="balance-card mb-4">
+                <h2 class="balance-title">Current Working Capital</h2>
+                <h1 class="balance-amount" id="working-capital">$0.00</h1>
+                
+                <div class="summary">
+                    <div class="summary-item">
+                        <div class="summary-header">Checking Balance</div>
+                        <p class="summary-amount" id="total-debit">$0.00</p>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="summary-item expense">
+                        <div class="summary-header">Credit Owed</div>
+                        <p class="summary-amount" id="total-credit">$0.00</p>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="summary-item income">
+                        <div class="summary-header">Stocks Value</div>
+                        <p class="summary-amount" id="total-stocks">$0.00</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart Section -->
+            <div class="card-section mb-4">
+                <div style="margin-bottom: 1rem;">
+                    <h3 style="margin-bottom: 0.2rem; color: var(--text-secondary); font-weight: 500;" id="chart-scrub-title">Working Capital Projection</h3>
+                    <h2 id="chart-scrub-val" style="margin: 0; font-size: 2.2rem; font-weight: 700; color: #fff; letter-spacing: -0.5px;">$0.00</h2>
+                    <div id="chart-scrub-diff" style="font-size: 0.95rem; font-weight: 600; color: var(--text-secondary); margin-top: 0.1rem;">Interactive projection</div>
+                </div>
+                <div id="chart-scroll-container" style="position: relative; height:300px; width:100%; overflow-x: auto; overflow-y: hidden;">
+                    <div id="chart-inner-wrap" style="height: 280px; width: 100%;">
+                        <canvas id="cashFlowChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pivot Table/Categories -->
+            <div class="card-section mb-4">
+                <h3>Categorical Analysis (All Time)</h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th class="text-right">Total Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="category-pivot-list">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card-section">
+                <h3>Runner Data (Daily Grid)</h3>
+                <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                    <table class="data-table">
+                        <thead id="runner-header">
+                            <!-- Populated by JS -->
+                        </thead>
+                        <tbody id="runner-list">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Transactions View -->
+        <section id="tab-transactions" class="tab-content">
+            
+            <div class="card-section mb-4" id="view-normal-transaction">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h3>Record Standard Transaction</h3>
+                        <button class="btn mt-2" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="toggleTransferMode(true)">Switch to Transfer <i data-lucide="arrow-right-left"></i></button>
+                    </div>
+                    <!-- DYNAMIC CARD MOCKUP -->
+                    <div id="active-card-mockup" class="credit-card-mockup theme-sapphire">
+                        <div class="cc-chip"></div>
+                        <div class="cc-contactless"><i data-lucide="wifi" style="transform: rotate(90deg); width:20px; height:20px;"></i></div>
+                        <div class="cc-content">
+                            <div class="cc-bank">Bank Name</div>
+                            <div class="cc-name" id="cc-mock-name">Card Name</div>
+                            <div class="cc-type" id="cc-mock-type">Credit</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <form id="transaction-form" class="grid-form">
+                    <div class="form-control">
+                        <label for="txn-date">Date</label>
+                        <input type="date" id="txn-date" required>
+                    </div>
+                    <div class="form-control">
+                        <label for="txn-account">Account</label>
+                        <select id="txn-account" required></select>
+                    </div>
+                    <div class="form-control">
+                        <label for="txn-category">Category</label>
+                        <select id="txn-category">
+                            <option value="Income">Income / Salary</option>
+                            <option value="Housing">Housing / Rent</option>
+                            <option value="Groceries">Groceries</option>
+                            <option value="Dining">Dining Out</option>
+                            <option value="Auto">Auto / Gas</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Utilities">Utilities</option>
+                            <option value="Transfer" selected>Internal Transfer</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label for="txn-recur">Recurrence Rule</label>
+                        <select id="txn-recur">
+                            <option value="none" selected>None (One-time)</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="biweekly">Bi-Weekly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="yearly">Yearly</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label for="txn-amount">Amount</label>
+                        <input type="number" id="txn-amount" step="0.01" min="0.01" placeholder="50.00" required>
+                    </div>
+                    <div class="form-control" style="grid-column: 1 / -1; margin-bottom: 0.5rem;">
+                        <div class="segment-control">
+                            <input type="radio" id="type-expense" name="txn-type" value="expense" checked>
+                            <label for="type-expense">Expense (Outflow)</label>
+                            <input type="radio" id="type-income" name="txn-type" value="income">
+                            <label for="type-income">Income (Inflow)</label>
+                        </div>
+                    </div>
+                    <div class="form-control" style="grid-column: 1 / -1">
+                        <label for="txn-desc">Description</label>
+                        <input type="text" id="txn-desc" placeholder="Groceries, Rent, Salary..." required>
+                    </div>
+                    <div class="form-control" style="grid-column: 1 / -1; display:flex; gap:0.5rem; margin-top: 0.5rem;">
+                        <button type="submit" class="btn" id="btn-submit-tx" style="flex:1;">Log Transaction <i data-lucide="plus"></i></button>
+                        <button type="button" class="btn" id="btn-cancel-edit" style="display:none; background:transparent; border:1px solid var(--text-secondary); color:var(--text-secondary);" onclick="cancelEditTx()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card-section mb-4" id="view-transfer-transaction" style="display:none; border-color: var(--accent);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3>Record Transfer / Payment</h3>
+                    <button class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="toggleTransferMode(false)">Switch to Standard <i data-lucide="list"></i></button>
+                </div>
+                <p class="text-subtle mb-4">Transfers create two transactions automatically (an outflow from source and inflow to destination).</p>
+                <form id="transfer-form" class="grid-form">
+                    <div class="form-control" style="grid-column: 1 / -1">
+                        <label for="trf-date">Date</label>
+                        <input type="date" id="trf-date" required>
+                    </div>
+                    <div class="form-control">
+                        <label for="trf-from">From Account (Outflow)</label>
+                        <select id="trf-from" required></select>
+                    </div>
+                    <div class="form-control">
+                        <label for="trf-to">To Account (Inflow)</label>
+                        <select id="trf-to" required></select>
+                    </div>
+                    <div class="form-control" style="grid-column: 1 / -1">
+                        <label for="trf-amount">Amount (Positive)</label>
+                        <input type="number" id="trf-amount" step="0.01" min="0.01" placeholder="500.00" required>
+                    </div>
+                    <button type="submit" class="btn" style="grid-column: 1 / -1">Process Transfer <i data-lucide="arrow-right-left"></i></button>
+                </form>
+            </div>
+
+            <!-- MASS IMPORT MOVED TO MODAL -->
+            <div class="card-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+                    <h3>Transaction Log</h3>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <input type="text" id="tx-search" placeholder="Search description..." style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" oninput="filterTransactions()">
+                        <select id="tx-filter-acc" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onchange="filterTransactions()">
+                            <option value="all">All Accounts</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width:40px; text-align:center;"><i data-lucide="check-circle" style="width:16px;height:16px;"></i></th>
+                                <th style="cursor:pointer;" onclick="sortTransactions('date')">Date <i data-lucide="arrow-up-down" style="width:12px; height:12px;"></i></th>
+                                <th>Account</th>
+                                <th>Category</th>
+                                <th>Description</th>
+                                <th class="text-right" style="cursor:pointer;" onclick="sortTransactions('amount')">Amount <i data-lucide="arrow-up-down" style="width:12px; height:12px;"></i></th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tx-log-list">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Accounts View -->
+        <section id="tab-accounts" class="tab-content">
+            <div class="card-section mb-4">
+                <h3>Add Account</h3>
+                <form id="account-form" class="grid-form">
+                    <div class="form-control">
+                        <label for="acc-name">Account Name</label>
+                        <input type="text" id="acc-name" placeholder="e.g. Chase Slate" required>
+                    </div>
+                    <div class="form-control">
+                        <label for="acc-type">Type</label>
+                        <select id="acc-type" required>
+                            <option value="Debit">Debit (Checking/Savings)</option>
+                            <option value="Credit">Credit Card</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label for="acc-theme">Card Visual Theme</label>
+                        <select id="acc-theme" required>
+                            <option value="theme-green">Standard Checking (Green)</option>
+                            <option value="theme-red">Standard Credit (Red)</option>
+                            <option value="theme-gold">Amex Gold</option>
+                            <option value="theme-plat">Amex Platinum</option>
+                            <option value="theme-sapphire">Chase Sapphire (Blue)</option>
+                            <option value="theme-apple">Apple Card (White)</option>
+                        </select>
+                    </div>
+                    <div class="form-control" id="acc-limit-wrap" style="display:none;">
+                        <label for="acc-limit">Credit Limit</label>
+                        <input type="number" id="acc-limit" step="1" placeholder="5000">
+                    </div>
+                    <div class="form-control" id="acc-apr-wrap" style="display:none;">
+                        <label for="acc-apr">APR (%)</label>
+                        <input type="number" id="acc-apr" step="0.01" placeholder="24.99">
+                    </div>
+                    <button type="submit" class="btn" style="grid-column: 1 / -1">Add Account <i data-lucide="plus"></i></button>
+                </form>
+            </div>
+
+            <div class="card-section mb-4">
+                <h3>Debit Accounts (Checking)</h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Account Name</th>
+                                <th class="text-right">Computed Balance</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="debit-accounts-list">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card-section">
+                <h3>Credit Accounts</h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Account Name</th>
+                                <th>Credit Line</th>
+                                <th class="text-right">Computed Balance</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="credit-accounts-list">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stocks View -->
+        <section id="tab-stocks" class="tab-content">
+            <div class="card-section mb-4">
+                <h3>Add / Update Holding</h3>
+                <form id="stock-form" class="grid-form">
+                    <div class="form-control">
+                        <label for="stk-symbol">Symbol</label>
+                        <input type="text" id="stk-symbol" placeholder="AAPL" required>
+                    </div>
+                    <div class="form-control">
+                        <label for="stk-desc">Description</label>
+                        <input type="text" id="stk-desc" placeholder="Apple Inc." required>
+                    </div>
+                    <div class="form-control">
+                        <label for="stk-qty">Quantity</label>
+                        <input type="number" id="stk-qty" step="0.0001" placeholder="10.5" required>
+                    </div>
+                    <div class="form-control">
+                        <label for="stk-price">Current Price ($)</label>
+                        <input type="number" id="stk-price" step="0.01" placeholder="150.00" required>
+                    </div>
+                    <div class="form-control" style="grid-column: 1 / -1">
+                        <label for="stk-cost">Total Cost Basis ($)</label>
+                        <input type="number" id="stk-cost" step="0.01" placeholder="1000.00" required>
+                    </div>
+                    <button type="submit" class="btn" style="grid-column: 1 / -1">Add Holding <i data-lucide="plus"></i></button>
+                </form>
+            </div>
+
+            <div class="card-section">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3>Investment Holdings Net Worth</h3>
+                    <button class="btn" style="background:transparent; border:1px solid #10b981; color:#10b981; padding:0.4rem 0.8rem; font-size:0.85rem;" onclick="fetchLiveQuotes()">
+                        Refresh Live Quotes <i data-lucide="refresh-cw" id="icon-refresh-quotes"></i>
+                    </button>
+                </div>
+                <div class="table-container" style="margin-top: 1rem;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Qty</th>
+                                <th>Cost Basis</th>
+                                <th>Price</th>
+                                <th class="text-right">Mkt Value</th>
+                                <th class="text-right">Gain/Loss</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="stocks-list">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Settings View -->
+        <section id="tab-settings" class="tab-content">
+            <div class="card-section mb-4">
+                <h3>Cloud Sync Details</h3>
+                <p class="text-subtle mb-4">Your connection is verified by Google Firebase Auth. All local data changes are actively mirrored into your cloud database securely!</p>
+                <div style="padding: 1rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 8px; color: #10b981; display:flex; align-items:center; gap: 0.75rem;">
+                    <i data-lucide="shield-check"></i> 
+                    <span><strong>End-To-End Synced:</strong> Logged in as <span id="auth-email-display">user</span></span>
+                </div>
+                <button class="btn mt-4" style="background: rgba(255,255,255,0.1); border: 1px solid var(--card-border); color: #fff; width: 100%;" onclick="signOut()">Sign Out of Secure Session</button>
+            </div>
+            <div class="card-section mb-4">
+                <h3>External Integrations</h3>
+                <p class="text-subtle mb-4">Provide a free <a href="https://finnhub.io/" target="_blank" style="color:var(--accent);">Finnhub API Key</a> to unlock live stock market quotes.</p>
+                <div class="grid-form">
+                    <div class="form-control">
+                        <label for="finnhub-api-key">Finnhub API Token</label>
+                        <input type="password" id="finnhub-api-key" placeholder="Enter API Key (e.g., cqxxxxhr...)">
+                    </div>
+                    <div class="form-control" style="justify-content:flex-end;">
+                        <button class="btn" onclick="saveApiKey()">Save Integration Key <i data-lucide="save"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-section mb-4">
+                <h3>Data Export / Import</h3>
+                <p class="text-subtle mb-4">Your data is stored locally in your browser. Download a backup periodically to ensure your data is safe.</p>
+                
+                <div class="grid-form pt-4" style="border-top: 1px solid var(--card-border);">
+                    <button class="btn" onclick="exportData()" style="padding: 1.5rem; justify-content: center; background-color: rgba(88, 166, 255, 0.1); border: 1px solid var(--accent); color: #fff;">
+                        Download Backup (.json) <i data-lucide="download"></i>
+                    </button>
+                    
+                    <div style="border: 2px dashed var(--card-border); border-radius: 0.5rem; padding: 1.5rem; text-align: center;">
+                        <input type="file" id="import-file" accept=".json" style="display:none;" onchange="handleImport(event)">
+                        <button class="btn" onclick="document.getElementById('import-file').click()" style="width: 100%; margin-bottom: 0.5rem;">
+                            Upload Backup <i data-lucide="upload"></i>
+                        </button>
+                        <small class="text-subtle">Warning: This will overwrite current data.</small>
+                    </div>
+                </div>
+                
+                <div class="mt-4 pt-4" style="border-top: 1px solid var(--card-border);">
+                    <button class="btn" onclick="factoryReset()" style="background-color: rgba(248, 81, 73, 0.1); border: 1px solid var(--danger); color: #ff7b72; font-weight: 700;">
+                        Erase All Data (Factory Reset) <i data-lucide="alert-triangle"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    </div> <!-- End of app-view -->
+
+    <!-- IMPORT MODAL -->
+    <div id="import-modal" class="modal" style="display:none;" onclick="if(event.target === this) closeImportModal()">
+        <div class="modal-content text-center">
+            <button class="btn" onclick="closeImportModal()" style="position:absolute; top:1rem; right:1rem; background:transparent; padding:0.3rem;"><i data-lucide="x"></i></button>
+            <h3 style="margin-bottom: 0.5rem;"><i data-lucide="file-spreadsheet" style="width:32px; height:32px; color:var(--accent); margin-bottom: 0.5rem; display:block; margin-left:auto; margin-right:auto;"></i>Mass Import Transactions</h3>
+            <p class="text-subtle mb-4" style="font-size:0.9rem;">Download the template, fill it out, and upload it back here. The <strong>AccountName</strong> in your spreadsheet must exactly match an Account you have created.</p>
+            <div style="display:flex; flex-direction:column; gap:1rem;">
+                <button class="btn" style="background: transparent; border: 1px solid var(--accent); color: var(--accent);" onclick="downloadCsvTemplate()">
+                    1. Download Template <i data-lucide="download"></i>
+                </button>
+                <input type="file" id="csv-import-file" accept=".csv" style="display:none;" onchange="handleCsvImport(event); closeImportModal();">
+                <button class="btn" onclick="document.getElementById('csv-import-file').click()">
+                    2. Upload Filled CSV <i data-lucide="upload"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CALENDAR MODAL -->
+    <div id="calendar-modal" class="modal" style="display:none;" onclick="if(event.target === this) closeCalendar()">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                <h3 id="cal-modal-title">Projected Transactions</h3>
+                <button class="btn" onclick="closeCalendar()" style="padding: 0.3rem 0.6rem;"><i data-lucide="x"></i></button>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                <button class="btn" style="background:transparent; border:1px solid #30363d;" onclick="shiftCalMonth(-1)">&larr; Prev</button>
+                <h4 id="cal-month-label" style="margin:0; font-weight:600;">Month 2026</h4>
+                <button class="btn" style="background:transparent; border:1px solid #30363d;" onclick="shiftCalMonth(1)">Next &rarr;</button>
+            </div>
+            <div id="calendar-grid" style="display:grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; text-align:center;">
+                <!-- Filled dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- TX DETAIL MODAL -->
+    <div id="tx-detail-modal" class="modal" style="display:none;" onclick="if(event.target === this) closeTxDetail()">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                <h3>Transaction Details</h3>
+                <button class="btn" onclick="closeTxDetail()" style="padding: 0.3rem 0.6rem; background:transparent;"><i data-lucide="x"></i></button>
+            </div>
+            <div id="tx-detail-body" style="background:#0d1117; padding:1.5rem; border-radius:8px; border:1px solid var(--card-border); margin-bottom:1rem;">
+                <!-- Filled dynamically -->
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+                <button class="btn" style="background:transparent; border:1px solid var(--text-secondary); color: var(--text-primary);" onclick="closeTxDetail()">Dismiss</button>
+                <button id="btn-route-edit" class="btn">Edit Core Transaction <i data-lucide="pencil"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

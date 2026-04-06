@@ -1,0 +1,261 @@
+:root {
+    --bg-dark: #0a0c10;
+    --card-bg: #161b22;
+    --card-border: #30363d;
+    --text-primary: #c9d1d9;
+    --text-secondary: #8b949e;
+    --accent: #58a6ff;
+    --accent-hover: #1f6feb;
+    --income: #3fb950;
+    --expense: #f85149;
+    --danger: #da3633;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 900px;
+    padding: 2rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+header { text-align: center; }
+header h1 { font-size: 1.85rem; font-weight: 700; margin-bottom: 0.25rem; color: #fff; }
+header p { color: var(--text-secondary); font-size: 0.95rem; }
+
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 0.5rem;
+    background: var(--card-bg);
+    padding: 0.5rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--card-border);
+    overflow-x: auto;
+}
+
+.tab-btn {
+    flex: 1;
+    background: transparent;
+    color: var(--text-secondary);
+    border: none;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+
+.tab-btn:hover { background: rgba(255, 255, 255, 0.05); color: var(--text-primary); }
+.tab-btn.active { background: var(--accent); color: #fff; }
+.tab-btn svg { width: 18px; height: 18px; }
+
+.tab-content { display: none; animation: fadeIn 0.3s ease; }
+.tab-content.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Utility Classes */
+.mt-4 { margin-top: 1.5rem; }
+.mb-4 { margin-bottom: 1.5rem; }
+.text-right { text-align: right !important; }
+
+/* Dashboard Balance Card */
+.balance-card {
+    background: linear-gradient(145deg, #1c2128, var(--card-bg));
+    border: 1px solid var(--card-border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    text-align: center;
+}
+.balance-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 0.5rem; font-weight: 600; }
+.balance-amount { font-size: 2.75rem; font-weight: 700; margin-bottom: 1.5rem; color: #fff; }
+
+.summary { display: flex; justify-content: space-between; background-color: #0d1117; border-radius: 0.75rem; padding: 1rem; border: 1px solid var(--card-border); }
+.summary-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+.summary-header { font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; }
+.summary-amount { font-size: 1.15rem; font-weight: 600; }
+.income .summary-amount { color: var(--income); }
+.expense .summary-amount { color: var(--expense); }
+.divider { width: 1px; background-color: var(--card-border); }
+
+/* Card & Tables */
+.card-section {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+}
+.card-section h3 { margin-bottom: 1rem; color: #fff; font-size: 1.2rem; }
+
+.table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.data-table th, .data-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--card-border); }
+.data-table th { font-weight: 600; color: var(--text-secondary); background: #0d1117; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; }
+.data-table tr:hover { background: rgba(255, 255, 255, 0.03); }
+.data-table td.amount-pos { color: var(--income); font-weight: 500; }
+.data-table td.amount-neg { color: var(--expense); font-weight: 500; }
+
+/* Runner Specific Excel Styling */
+.excel-table { border-collapse: separate; border-spacing: 2px; }
+.excel-table td, .excel-table th { border: none !important; padding: 0.4rem 0.6rem; font-size: 0.85rem; text-align: center; }
+.cell-cap { background-color: rgba(16, 185, 129, 0.2); font-weight: 600; color: #fff; }
+.cell-wkday { background-color: #3b82f6; color: #fff; text-align: left; }
+.cell-wkend { background-color: #1e3a8a; color: #fff; text-align: left; }
+.cell-pos { background-color: rgba(16, 185, 129, 0.5); color: #fff; }
+.cell-neg { background-color: rgba(244, 63, 94, 0.4); color: #fff; }
+.cell-empty { background-color: transparent; border: 1px solid var(--card-border) !important; color: var(--text-secondary); text-align: center; }
+.hover-highlight:hover { filter: brightness(1.2); outline: 1px solid #fff; z-index: 10; position: relative; }
+
+/* Forms */
+.grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 600px) { .grid-form { grid-template-columns: 1fr; } }
+.form-control { display: flex; flex-direction: column; gap: 0.4rem; }
+.checkbox-control { flex-direction: row; align-items: center; gap: 0.5rem; }
+
+/* Segment Control */
+.segment-control { display:flex; background:#0d1117; border-radius:0.5rem; padding:0.25rem; border:1px solid var(--card-border); }
+.segment-control input { display:none; }
+.segment-control label { flex:1; text-align:center; padding:0.6rem; cursor:pointer; color:var(--text-secondary); border-radius:0.35rem; transition:0.2s; font-size:0.9rem; font-weight:600; }
+.segment-control input[value="expense"]:checked + label { background-color:rgba(248,81,73,0.15); color:var(--expense); }
+.segment-control input[value="income"]:checked + label { background-color:rgba(63,185,80,0.15); color:var(--income); }
+
+/* Modal & Calendar */
+.modal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); display:flex; justify-content:center; align-items:center; z-index:9999; }
+.modal-content { background:#0d1117; padding:2rem; border-radius:8px; border:1px solid var(--card-border); max-width:500px; width:90%; position:relative; box-shadow:0 8px 30px rgba(0,0,0,0.5); }
+.cal-day { padding:0.5rem; border-radius:4px; border:1px solid #30363d; background:transparent; font-size:0.85rem; font-weight: 500; }
+.cal-day.header { background:#161b22; color:var(--text-secondary); border:none; padding:0.25rem 0; font-size:0.75rem; }
+.cal-day.active { background-color:rgba(88,166,255,0.2); border-color:var(--accent); color:#fff; box-shadow: 0 0 10px rgba(88,166,255,0.3); font-weight: 700; }
+
+/* Dynamic Physical Credit Cards */
+.credit-card-mockup { width: 280px; height: 176px; border-radius: 12px; position: relative; padding: 1.5rem; color: #fff; box-shadow: 0 15px 35px rgba(0,0,0,0.4); display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; transition: background 0.4s ease; border: 1px solid rgba(255,255,255,0.1); }
+.credit-card-mockup::before { content: ''; position: absolute; top:0; left:0; width:100%; height:100%; background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 100%); pointer-events: none; }
+.cc-chip { width: 40px; height: 30px; background: linear-gradient(135deg, #e5c46e 0%, #b28833 100%); border-radius: 6px; position: relative; border: 1px solid rgba(0,0,0,0.2); overflow: hidden; }
+.cc-chip::before { content:''; position:absolute; top:50%; left:0; width:100%; height:1px; background: rgba(0,0,0,0.2); }
+.cc-chip::after { content:''; position:absolute; left:50%; top:0; height:100%; width:1px; background: rgba(0,0,0,0.2); }
+.cc-contactless { position: absolute; right: 1.5rem; top: 1.5rem; opacity: 0.6; }
+.cc-content { display: flex; flex-direction: column; margin-top: auto; z-index: 1; }
+.cc-bank { font-size: 0.75rem; opacity: 0.8; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.2rem; }
+.cc-name { font-size: 1.1rem; font-weight: 600; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+.cc-type { font-size: 0.65rem; opacity: 0.7; letter-spacing: 2px; text-transform: uppercase; margin-top: 0.3rem; }
+
+/* Themes */
+.theme-gold { background: linear-gradient(135deg, #dfb75c 0%, #a67c00 100%); color: #fff; }
+.theme-plat { background: linear-gradient(135deg, #b0bcc4 0%, #68737c 100%); color: #fff; }
+.theme-sapphire { background: linear-gradient(135deg, #0b3558 0%, #041022 100%); color: #fff; }
+.theme-apple { background: #f5f5f7; color: #1d1d1f; box-shadow: 0 10px 20px rgba(0,0,0,0.2); border: 1px solid #d2d2d7; }
+.theme-apple .cc-chip { background: linear-gradient(135deg, #c0c0c0 0%, #909090 100%); }
+.theme-green { background: linear-gradient(135deg, #0f5132 0%, #062c19 100%); color: #fff; }
+.theme-red { background: linear-gradient(135deg, #8b1523 0%, #4a000a 100%); color: #fff; }
+
+label { font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); }
+input, select {
+    background-color: #0d1117;
+    border: 1px solid var(--card-border);
+    color: var(--text-primary);
+    border-radius: 0.5rem;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.95rem;
+    font-family: inherit;
+    outline: none;
+    transition: all 0.2s ease;
+}
+input:focus, select:focus { border-color: var(--accent); }
+
+/* Force Webkit Native Calendar & Number Spinner Icons to White for Dark Mode */
+::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.7;
+    cursor: pointer;
+}
+
+.btn {
+    background-color: var(--accent);
+    color: #0d1117;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+}
+.btn:hover { background-color: var(--accent-hover); color:#fff; }
+.btn:active { transform: scale(0.98); }
+
+.delete-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+.delete-btn:hover { color: var(--danger); }
+
+/* Responsive Tweaks for Mobile / iPhone */
+@media (max-width: 768px) {
+    .app-container {
+        padding: 1rem 0.5rem;
+    }
+    
+    /* Wrap tabs to rows instead of a long annoying swipe row */
+    .tabs {
+        flex-wrap: wrap;
+        padding: 0.25rem;
+        border-radius: 0.5rem;
+        justify-content: center;
+    }
+    .tab-btn {
+        flex: 1 1 30%;
+        padding: 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    /* Stack the summary block vertically */
+    .summary {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    .divider {
+        width: 100%;
+        height: 1px;
+    }
+    
+    .card-section {
+        padding: 1rem;
+        border-radius: 0.75rem;
+    }
+    
+    /* Prevent tables from squishing text violently on mobile, force horizontal scroll instead */
+    .data-table th, .data-table td {
+        white-space: nowrap;
+        padding: 0.85rem 0.65rem;
+    }
+    
+    header h1 { font-size: 1.5rem; }
+}
