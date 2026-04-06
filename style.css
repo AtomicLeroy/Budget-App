@@ -130,7 +130,6 @@ header p { color: var(--text-secondary); font-size: 0.95rem; }
 
 /* Forms */
 .grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-@media (max-width: 600px) { .grid-form { grid-template-columns: 1fr; } }
 .form-control { display: flex; flex-direction: column; gap: 0.4rem; }
 .checkbox-control { flex-direction: row; align-items: center; gap: 0.5rem; }
 
@@ -255,6 +254,25 @@ input:focus, select:focus { border-color: var(--accent); }
     .data-table th, .data-table td {
         white-space: nowrap;
         padding: 0.85rem 0.65rem;
+    }
+    
+    /* Ensure forms stack on narrow screens */
+    .grid-form { grid-template-columns: 1fr; }
+    
+    /* Keep dynamic cards from breaking containers */
+    .credit-card-mockup {
+        width: 100%;
+        max-width: 320px;
+        margin: 0 auto;
+    }
+    
+    /* Center align headers that are normally flex-space-between on desktop */
+    .mobile-flex-col {
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center;
+        gap: 1rem;
     }
     
     header h1 { font-size: 1.5rem; }

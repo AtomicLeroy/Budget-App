@@ -215,14 +215,29 @@ function renderAccounts() {
         </tr>
     `).join('');
 
-    document.getElementById('credit-accounts-list').innerHTML = db.accounts.filter(a => a.type === 'Credit').map(acc => `
+    document.getElementById('credit-accounts-list').innerHTML = db.accounts.filter(a => a.type === 'Credit').map(acc => {
+        // Compute next statement date
+        let stmtDisplay = '<span style="color:var(--text-secondary);">—</span>';
+        if (acc.statementDay) {
+            const today = new Date();
+            let nextStmt = new Date(today.getFullYear(), today.getMonth(), acc.statementDay);
+            if (nextStmt <= today) {
+                nextStmt = new Date(today.getFullYear(), today.getMonth() + 1, acc.statementDay);
+            }
+            const daysUntil = Math.ceil((nextStmt - today) / (1000 * 60 * 60 * 24));
+            const dateStr = nextStmt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const urgencyColor = daysUntil <= 3 ? '#ff5000' : daysUntil <= 7 ? '#f7971e' : 'var(--text-secondary)';
+            stmtDisplay = `<span style="font-weight:600; color:${urgencyColor};">${dateStr}</span><br><small style="color:var(--text-secondary);">${daysUntil}d away</small>`;
+        }
+        return `
         <tr>
             <td><strong>${acc.name}</strong><br><small class="text-subtle">APR: ${acc.apr}%</small></td>
             <td>${acc.limit === 999999 ? 'No Preset Limit' : formatCurrency(acc.limit)}</td>
+            <td>${stmtDisplay}</td>
             <td class="text-right ${balances[acc.id] < 0 ? 'amount-neg' : ''}">${formatCurrency(Math.abs(balances[acc.id]))} Owed</td>
             <td><button class="delete-btn" onclick="deleteAccount('${acc.id}')"><i data-lucide="trash-2"></i></button></td>
-        </tr>
-    `).join('');
+        </tr>`;
+    }).join('');
 }
 
 // === TRANSACTION DOM & FILTER LOGIC === //
@@ -362,9 +377,9 @@ function renderRunnerAndDashboard() {
         if (!earliestDate || txTime < earliestDate) earliestDate = txTime;
         if (!latestDate || txTime > latestDate) latestDate = txTime;
         
-        // Pivot table logic
+        // Pivot table logic — include ALL real (non-ghost) transactions, past and future
         const cat = tx.category || 'Other';
-        if(cat !== 'Transfer' && cat !== 'Working Capital Seed' && isPastOrToday) {
+        if(cat !== 'Transfer' && cat !== 'Working Capital Seed' && !tx._isProjected) {
             if (!categoriesPivot[cat]) categoriesPivot[cat] = 0;
             categoriesPivot[cat] += amt;
         }
@@ -461,7 +476,7 @@ function renderRunnerAndDashboard() {
         const dayClass = isWeekend ? 'cell-wkend' : 'cell-wkday';
 
         let rowHTML = `<tr>
-            <td class="cell-cap">${formatCurrency(r.cap)}</td>
+            <td class="cell-cap hover-highlight" style="cursor:pointer; text-decoration: underline dotted; text-underline-offset: 3px;" onclick="openCapSnapshot('${r.date}')" title="Click to see account breakdown">${formatCurrency(r.cap)}</td>
             <td style="text-align: right; background: #fff; color: #000; padding: 0.1rem 0.5rem; font-size:0.8rem;">${dateDisplay}</td>
             <td class="${dayClass}">${dayWord}</td>`;
         
@@ -520,26 +535,9 @@ function renderRunnerAndDashboard() {
     gradient.addColorStop(0, rgbaColor + '0.3)');
     gradient.addColorStop(1, rgbaColor + '0.0)');
 
-    // Pre-compute Baseline for strict Vertical Centering framing
-    const todayTempObj = new Date();
-    const tBYear = todayTempObj.getFullYear();
-    const tBMonth = String(todayTempObj.getMonth()+1).padStart(2, '0');
-    const tBDay = String(todayTempObj.getDate()).padStart(2, '0');
-    const tFmtOut = formatDate(`${tBYear}-${tBMonth}-${tBDay}`);
-    let todaySetIdx = chartLabels.findIndex(l => l === tFmtOut);
-    todaySetIdx = todaySetIdx >= 0 ? todaySetIdx : 0;
-    
-    const todayVal = chartData[todaySetIdx] || 0;
+    // Let Chart.js auto-scale naturally to emphasize slight changes in data
     const maxData = Math.max(...chartData);
     const minData = Math.min(...chartData);
-    
-    // Find the furthest extent the data travels from Today
-    const distTop = Math.abs(maxData - todayVal);
-    const distBottom = Math.abs(todayVal - minData);
-    const symDist = Math.max(distTop, distBottom);
-    
-    // Pad the vertical bounds by an extra 10% past the absolute extreme
-    const boundPadding = symDist === 0 ? Math.abs(todayVal) * 0.05 + 100 : symDist * 1.1;
 
     runningChartInstance = new Chart(ctx, {
         type: 'line',
@@ -618,9 +616,9 @@ function renderRunnerAndDashboard() {
             scales: {
                 y: { 
                     display: false,
-                    suggestedMax: todayVal + boundPadding,
-                    suggestedMin: todayVal - boundPadding
-                }, // Completely hide axes for Robinhood aesthetic but enforce Y-axis symmetry
+                    min: minData === maxData ? minData - 100 : minData - Math.abs((maxData - minData) * 0.1),
+                    max: minData === maxData ? maxData + 100 : maxData + Math.abs((maxData - minData) * 0.1)
+                }, // Completely hide axes for Robinhood aesthetic but enforce explicit tight scaling
                 x: { 
                     display: true,
                     grid: { display: false },
@@ -1017,6 +1015,7 @@ document.getElementById('acc-type').addEventListener('change', (e) => {
     const wrapShow = e.target.value === 'Credit' ? 'flex' : 'none';
     document.getElementById('acc-limit-wrap').style.display = wrapShow;
     document.getElementById('acc-apr-wrap').style.display = wrapShow;
+    document.getElementById('acc-stmt-wrap').style.display = wrapShow;
 });
 
 // CARD MOCKUP ENGINE
@@ -1037,16 +1036,27 @@ function updateActiveCardMockup() {
 
     // Remove all existing theme classes
     mockup.className = "credit-card-mockup";
-    
-    // Add explicitly assigned theme
-    if (acc.theme) {
-        mockup.classList.add(acc.theme);
+
+    if (acc.theme === 'theme-custom' && acc.customBg1) {
+        // Apply fully custom inline style
+        const angle = acc.customAngle || 135;
+        mockup.style.background = `linear-gradient(${angle}deg, ${acc.customBg1}, ${acc.customBg2 || acc.customBg1})`;
+        mockup.style.color = acc.customText || '#ffffff';
     } else {
-        mockup.classList.add(acc.type === 'Credit' ? 'theme-red' : 'theme-green');
+        mockup.style.background = '';
+        mockup.style.color = '';
+        if (acc.theme) {
+            mockup.classList.add(acc.theme);
+        } else {
+            mockup.classList.add(acc.type === 'Credit' ? 'theme-red' : 'theme-green');
+        }
     }
 
     document.getElementById('cc-mock-name').innerText = acc.name;
     document.getElementById('cc-mock-type').innerText = acc.type === 'Credit' ? `Credit Limit: ${formatCurrency(acc.limit || 0)}` : 'Checking Account';
+    // Show bank name on card if set
+    const bankEl = mockup.querySelector('.cc-bank');
+    if (bankEl) bankEl.innerText = acc.bank || 'Bank';
     
     lucide.createIcons();
 }
@@ -1058,16 +1068,34 @@ if(window.location.hostname === 'localhost' || window.location.hostname === '127
 document.getElementById('account-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const type = document.getElementById('acc-type').value;
+    const themeVal = document.getElementById('acc-theme').value;
     const newAcc = { 
         id: 'A' + Date.now(), 
-        name: document.getElementById('acc-name').value, 
+        name: document.getElementById('acc-name').value,
+        bank: document.getElementById('acc-bank').value || '',
         type: type,
-        theme: document.getElementById('acc-theme').value 
+        theme: themeVal
     };
+    if (themeVal === 'theme-custom' && window._pendingCustomDesign) {
+        newAcc.customBg1   = window._pendingCustomDesign.bg1;
+        newAcc.customBg2   = window._pendingCustomDesign.bg2;
+        newAcc.customText  = window._pendingCustomDesign.text;
+        newAcc.customAngle = window._pendingCustomDesign.angle;
+    }
     if (type === 'Credit') {
         newAcc.limit = parseFloat(document.getElementById('acc-limit').value);
         newAcc.apr = parseFloat(document.getElementById('acc-apr').value);
+        const stmtDay = parseInt(document.getElementById('acc-stmt-day').value);
+        if (!isNaN(stmtDay) && stmtDay >= 1 && stmtDay <= 31) {
+            newAcc.statementDay = stmtDay;
+        }
     }
+    // Reset pending state and dropdown styling
+    window._pendingCustomDesign = null;
+    window._customDesignConfirmed = false;
+    const themeSelEl = document.getElementById('acc-theme');
+    themeSelEl.style.background = '';
+    themeSelEl.style.color = '';
     db.accounts.push(newAcc);
     saveAll(); e.target.reset(); renderAll();
 });
@@ -1201,3 +1229,201 @@ window.fetchLiveQuotes = async function() {
    INIT
    ================== */
 // Rendering logic moved fully into auth.onAuthStateChanged() to block until payload arrives
+// ─── CAPITAL SNAPSHOT DRILL-DOWN ────────────────────────────────────────────
+window.openCapSnapshot = function(dateStr) {
+    const modal = document.getElementById('cap-snapshot-modal');
+    const body  = document.getElementById('cap-snap-body');
+    const dateDisplay = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    document.getElementById('cap-snap-date').innerText = dateDisplay;
+
+    // Pull all projected transactions up to and including this date
+    const allTx = getProjectedTransactions();
+    const cutoff = dateStr; // YYYY-MM-DD string comparison works lexicographically
+
+    // Calculate running balance per account
+    const balanceMap = {};  // accountId -> running total
+    db.accounts.forEach(a => { balanceMap[a.id] = 0; });
+
+    allTx
+        .filter(tx => tx.date <= cutoff)
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .forEach(tx => {
+            const amt = parseFloat(tx.amount);
+            if (balanceMap[tx.accountId] !== undefined) {
+                balanceMap[tx.accountId] += amt;
+            }
+        });
+
+    // Separate accounts into debit and credit
+    const debitAccs  = db.accounts.filter(a => a.type === 'Debit');
+    const creditAccs = db.accounts.filter(a => a.type === 'Credit');
+
+    let totalDebit  = 0;
+    let totalCredit = 0;
+
+    function accRow(acc, balance) {
+        const isCredit = acc.type === 'Credit';
+        const displayBalance = isCredit ? Math.abs(balance) : balance;
+        const colorClass = balance >= 0 ? '#00c805' : '#ff5000';
+        const limitBar = isCredit && acc.limit
+            ? `<div style="margin-top:0.4rem; background:#1e2329; border-radius:4px; height:4px; overflow:hidden;">
+                   <div style="width:${Math.min(100, (Math.abs(balance)/acc.limit)*100).toFixed(1)}%; height:100%; background:${Math.abs(balance)/acc.limit > 0.8 ? '#ff5000' : '#58a6ff'}; border-radius:4px;"></div>
+               </div>
+               <div style="font-size:0.7rem; color:var(--text-secondary); margin-top:0.2rem;">$${Math.abs(balance).toFixed(2)} / $${acc.limit.toLocaleString()} limit</div>`
+            : '';
+        return `
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; padding:0.75rem; background:#0d1117; border:1px solid var(--card-border); border-radius:8px; margin-bottom:0.5rem;">
+            <div>
+                <div style="font-weight:600; font-size:0.95rem; color:#fff;">${acc.name}</div>
+                <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:0.15rem;">${acc.type} Account</div>
+                ${limitBar}
+            </div>
+            <div style="font-size:1.1rem; font-weight:700; color:${colorClass}; white-space:nowrap; margin-left:1rem;">${formatCurrency(displayBalance)}</div>
+        </div>`;
+    }
+
+    let html = '';
+
+    if (debitAccs.length) {
+        html += `<div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-secondary); margin-bottom:0.5rem;">Checking / Savings</div>`;
+        debitAccs.forEach(a => {
+            const bal = balanceMap[a.id] || 0;
+            totalDebit += bal;
+            html += accRow(a, bal);
+        });
+    }
+
+    if (creditAccs.length) {
+        html += `<div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-secondary); margin: 0.75rem 0 0.5rem;">Credit Cards</div>`;
+        creditAccs.forEach(a => {
+            const bal = balanceMap[a.id] || 0;
+            totalCredit += bal;
+            html += accRow(a, bal);
+        });
+    }
+
+    if (!html) {
+        html = `<p style="color:var(--text-secondary); text-align:center;">No account data found.</p>`;
+    }
+
+    const workingCapital = totalDebit + totalCredit;
+    const capColor = workingCapital >= 0 ? '#00c805' : '#ff5000';
+    document.getElementById('cap-snap-total').innerText = formatCurrency(workingCapital);
+    document.getElementById('cap-snap-total').style.color = capColor;
+    body.innerHTML = html;
+    modal.style.display = 'flex';
+    lucide.createIcons();
+};
+
+// ─── CARD DESIGNER ───────────────────────────────────────────────────────────
+
+// When user picks 'theme-custom' from dropdown, open the designer
+window.onThemeSelectChange = function(val) {
+    if (val === 'theme-custom') {
+        // Pre-fill preview labels from the current form state
+        const nameEl = document.getElementById('cd-preview-name');
+        const bankEl = document.getElementById('cd-preview-bank');
+        if (nameEl) nameEl.innerText = document.getElementById('acc-name').value || 'Card Name';
+        if (bankEl) bankEl.innerText = document.getElementById('acc-bank').value || 'Bank Name';
+        // Build preset swatches
+        buildCardSwatches();
+        updateCardPreview();
+        document.getElementById('card-designer-modal').style.display = 'flex';
+        lucide.createIcons();
+    }
+};
+
+// Preset gradient swatches for the card designer
+const CARD_PRESETS = [
+    { name: 'Ocean Blue',    bg1: '#0b3558', bg2: '#041022', text: '#ffffff', angle: 135 },
+    { name: 'Midnight',      bg1: '#0f0c29', bg2: '#302b63', text: '#ffffff', angle: 160 },
+    { name: 'Emerald',       bg1: '#134e5e', bg2: '#71b280', text: '#ffffff', angle: 120 },
+    { name: 'Sunset',        bg1: '#f7971e', bg2: '#ffd200', text: '#1a1a1a', angle: 135 },
+    { name: 'Rose Gold',     bg1: '#b76e79', bg2: '#e8c5b0', text: '#2c1a1a', angle: 150 },
+    { name: 'Obsidian',      bg1: '#1c1c1e', bg2: '#3a3a3c', text: '#f0f0f0', angle: 145 },
+    { name: 'Electric Plum', bg1: '#4a0e8f', bg2: '#0052a3', text: '#ffffff', angle: 135 },
+    { name: 'Arctic',        bg1: '#e0eafc', bg2: '#cfdef3', text: '#1a2a4a', angle: 180 },
+    { name: 'Volcanic',      bg1: '#8b1a1a', bg2: '#240000', text: '#ffb3b3', angle: 135 },
+    { name: 'Aurora',        bg1: '#00d2ff', bg2: '#3a7bd5', text: '#ffffff', angle: 120 },
+];
+
+function buildCardSwatches() {
+    const container = document.getElementById('cd-swatches');
+    if (!container) return;
+    container.innerHTML = CARD_PRESETS.map((p, i) => `
+        <div title="${p.name}" onclick="applyCardPreset(${i})" style="
+            width: 40px; height: 26px; border-radius: 6px; cursor: pointer;
+            background: linear-gradient(${p.angle}deg, ${p.bg1}, ${p.bg2});
+            border: 2px solid transparent; transition: border-color 0.15s, transform 0.15s;
+            flex-shrink: 0;
+        " onmouseover="this.style.borderColor='#fff'; this.style.transform='scale(1.15)'"
+           onmouseout="this.style.borderColor='transparent'; this.style.transform='scale(1)'">
+        </div>`).join('');
+}
+
+window.applyCardPreset = function(idx) {
+    const p = CARD_PRESETS[idx];
+    document.getElementById('cd-bg1').value    = p.bg1;
+    document.getElementById('cd-bg1-hex').value = p.bg1;
+    document.getElementById('cd-bg2').value    = p.bg2;
+    document.getElementById('cd-bg2-hex').value = p.bg2;
+    document.getElementById('cd-text').value   = p.text;
+    document.getElementById('cd-text-hex').value = p.text;
+    document.getElementById('cd-angle').value  = p.angle;
+    document.getElementById('cd-angle-val').innerText = p.angle + '°';
+    updateCardPreview();
+};
+
+// Keep color pickers and hex inputs in sync
+window.syncColorFromText = function(pickerId, hexId) {
+    const hexVal = document.getElementById(hexId).value.trim();
+    if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(hexVal)) {
+        document.getElementById(pickerId).value = hexVal;
+    }
+};
+
+// Live-update the preview card inside the designer
+window.updateCardPreview = function() {
+    const bg1   = document.getElementById('cd-bg1').value;
+    const bg2   = document.getElementById('cd-bg2').value;
+    const text  = document.getElementById('cd-text').value;
+    const angle = document.getElementById('cd-angle').value;
+
+    // Sync hex inputs to match wheel
+    document.getElementById('cd-bg1-hex').value = bg1;
+    document.getElementById('cd-bg2-hex').value = bg2;
+    document.getElementById('cd-text-hex').value = text;
+
+    const preview = document.getElementById('card-designer-preview');
+    preview.style.background = `linear-gradient(${angle}deg, ${bg1}, ${bg2})`;
+    preview.style.color = text;
+};
+
+window.closeCardDesigner = function() {
+    document.getElementById('card-designer-modal').style.display = 'none';
+    // Reset dropdown if they cancelled without confirming
+    const sel = document.getElementById('acc-theme');
+    if (sel && sel.value === 'theme-custom' && !window._customDesignConfirmed) {
+        sel.value = 'theme-green'; // revert to default
+    }
+    window._customDesignConfirmed = false;
+};
+
+// Stores the confirmed custom design on a temporary object read at form submit
+window._pendingCustomDesign = null;
+window._customDesignConfirmed = false;
+
+window.confirmCardDesign = function() {
+    window._pendingCustomDesign = {
+        bg1:   document.getElementById('cd-bg1').value,
+        bg2:   document.getElementById('cd-bg2').value,
+        text:  document.getElementById('cd-text').value,
+        angle: document.getElementById('cd-angle').value
+    };
+    window._customDesignConfirmed = true;
+    document.getElementById('card-designer-modal').style.display = 'none';
+    // Show a small preview swatch next to the dropdown
+    const sel = document.getElementById('acc-theme');
+    if (sel) sel.style.background = `linear-gradient(${window._pendingCustomDesign.angle}deg, ${window._pendingCustomDesign.bg1}, ${window._pendingCustomDesign.bg2})`;
+    if (sel) sel.style.color = window._pendingCustomDesign.text;
+};
