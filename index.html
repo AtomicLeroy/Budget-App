@@ -423,10 +423,6 @@
                             <label for="stk-qty">Quantity</label>
                             <input type="number" id="stk-qty" step="0.0001" placeholder="10.5" required>
                         </div>
-                        <div class="form-control">
-                            <label for="stk-price">Current Price ($)</label>
-                            <input type="number" id="stk-price" step="0.01" placeholder="150.00" required>
-                        </div>
                         <div class="form-control" style="grid-column: 1 / -1">
                             <label for="stk-cost">Total Cost Basis ($)</label>
                             <input type="number" id="stk-cost" step="0.01" placeholder="1000.00" required>
@@ -453,7 +449,6 @@
                                     <th>Symbol</th>
                                     <th>Qty</th>
                                     <th>Cost Basis</th>
-                                    <th>Price</th>
                                     <th class="text-right">Mkt Value</th>
                                     <th class="text-right">Gain/Loss</th>
                                     <th></th>
@@ -638,7 +633,7 @@
     <div id="cap-snapshot-modal" class="modal" style="display:none;"
         onclick="if(event.target === this) this.style.display='none'">
         <div class="modal-content" style="max-width: 520px; width: 90%;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.25rem;">
+            <div class="mobile-flex-col" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.25rem;">
                 <div>
                     <h3 style="margin:0;" id="cap-snap-date">Balance Breakdown</h3>
                     <p style="margin:0.25rem 0 0; font-size:0.85rem; color:var(--text-secondary);">Projected account
@@ -650,7 +645,7 @@
             <div id="cap-snap-body">
                 <!-- Filled dynamically -->
             </div>
-            <div
+            <div class="mobile-flex-col"
                 style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--card-border); display:flex; justify-content:space-between; align-items:center;">
                 <span style="font-size:0.85rem; color:var(--text-secondary);">Total Working Capital</span>
                 <span id="cap-snap-total" style="font-size:1.3rem; font-weight:700; color:#fff;">$0.00</span>
@@ -676,7 +671,7 @@
             </div>
 
             <!-- Card preview + controls side by side -->
-            <div style="display:flex; gap:1.5rem; align-items:flex-start;">
+            <div class="cd-flex-container">
 
                 <!-- Left: card preview -->
                 <div style="flex-shrink:0;">
@@ -694,7 +689,7 @@
                 </div>
 
                 <!-- Right: all controls -->
-                <div style="flex:1; min-width:0;">
+                <div class="cd-controls-side" style="min-width:0;">
                     <!-- Quick Presets -->
                     <p
                         style="font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-secondary); margin-bottom:0.4rem;">

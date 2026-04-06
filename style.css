@@ -44,11 +44,13 @@ header p { color: var(--text-secondary); font-size: 0.95rem; }
     display: flex;
     gap: 0.5rem;
     background: var(--card-bg);
-    padding: 0.5rem;
+    padding: 0.25rem;
     border-radius: 0.75rem;
     border: 1px solid var(--card-border);
     overflow-x: auto;
+    scrollbar-width: none; /* Firefox */
 }
+.tabs::-webkit-scrollbar { display: none; } /* Safari/Chrome */
 
 .tab-btn {
     flex: 1;
@@ -168,6 +170,10 @@ header p { color: var(--text-secondary); font-size: 0.95rem; }
 .theme-green { background: linear-gradient(135deg, #0f5132 0%, #062c19 100%); color: #fff; }
 .theme-red { background: linear-gradient(135deg, #8b1523 0%, #4a000a 100%); color: #fff; }
 
+/* Modal Stacking Layouts for Card Designer */
+.cd-flex-container { display: flex; gap: 1.5rem; align-items: flex-start; }
+.cd-controls-side { flex: 1; }
+
 label { font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); }
 input, select {
     background-color: #0d1117;
@@ -218,27 +224,33 @@ input:focus, select:focus { border-color: var(--accent); }
 
 /* Responsive Tweaks for Mobile / iPhone */
 @media (max-width: 768px) {
+    body { overflow-x: hidden; position: relative; width: 100%; }
     .app-container {
-        padding: 1rem 0.5rem;
+        padding: 1rem 0.6rem;
+        max-width: 100vw;
+        overflow-x: hidden;
     }
     
-    /* Wrap tabs to rows instead of a long annoying swipe row */
     .tabs {
-        flex-wrap: wrap;
-        padding: 0.25rem;
-        border-radius: 0.5rem;
-        justify-content: center;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        justify-content: flex-start !important;
+        overflow-x: auto !important;
+        padding: 0.4rem;
+        -webkit-overflow-scrolling: touch;
+        gap: 0.4rem;
     }
+    .tabs::-webkit-scrollbar { display: none; }
     .tab-btn {
-        flex: 1 1 30%;
-        padding: 0.5rem;
+        flex: 0 0 auto !important;
+        padding: 0.6rem 0.8rem;
         font-size: 0.8rem;
+        white-space: nowrap;
     }
     
-    /* Stack the summary block vertically */
     .summary {
         flex-direction: column;
-        gap: 0.75rem;
+        gap: 0.5rem;
     }
     .divider {
         width: 100%;
@@ -250,30 +262,52 @@ input:focus, select:focus { border-color: var(--accent); }
         border-radius: 0.75rem;
     }
     
-    /* Prevent tables from squishing text violently on mobile, force horizontal scroll instead */
+    .table-container {
+        margin-left: -0.25rem;
+        margin-right: -0.25rem;
+    }
     .data-table th, .data-table td {
         white-space: nowrap;
-        padding: 0.85rem 0.65rem;
+        padding: 0.7rem 0.5rem;
+        font-size: 0.78rem;
     }
     
-    /* Ensure forms stack on narrow screens */
-    .grid-form { grid-template-columns: 1fr; }
+    .grid-form { grid-template-columns: 1fr; gap: 0.75rem; }
     
-    /* Keep dynamic cards from breaking containers */
     .credit-card-mockup {
-        width: 100%;
-        max-width: 320px;
+        width: 100% !important;
+        max-width: 270px !important;
+        height: 170px !important;
         margin: 0 auto;
     }
     
-    /* Center align headers that are normally flex-space-between on desktop */
     .mobile-flex-col {
         flex-direction: column !important;
         align-items: center !important;
         justify-content: center !important;
         text-align: center;
-        gap: 1rem;
+        gap: 0.75rem;
     }
     
-    header h1 { font-size: 1.5rem; }
+    .modal-content {
+        padding: 1.25rem !important;
+        width: 95% !important;
+        margin: 1rem;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    
+    header h1 { font-size: 1.45rem; }
+    .balance-amount { font-size: 2.1rem; word-break: break-all; }
+
+    /* Stacking for Card Designer Modal */
+    .cd-flex-container {
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 1rem !important;
+    }
+    .cd-controls-side {
+        width: 100% !important;
+        margin-top: 0.5rem;
+    }
 }

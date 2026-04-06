@@ -673,7 +673,6 @@ function renderStocks() {
             <td><strong>${s.symbol}</strong><br><small class="text-subtle">${s.desc}</small></td>
             <td>${s.qty}</td>
             <td>${formatCurrency(s.cost)}</td>
-            <td>${formatCurrency(s.price)}</td>
             <td class="text-right font-weight-bold" style="color:#fff;">${formatCurrency(mktVal)}</td>
             <td class="text-right ${glClass}">${gainLoss >= 0 ? '+' : ''}${formatCurrency(gainLoss)}</td>
             <td><button class="delete-btn" onclick="deleteStock('${s.id}')"><i data-lucide="trash-2"></i></button></td>
@@ -1113,7 +1112,7 @@ document.getElementById('stock-form').addEventListener('submit', (e) => {
         symbol: symbol,
         desc: document.getElementById('stk-desc').value,
         qty: parseFloat(document.getElementById('stk-qty').value),
-        price: parseFloat(document.getElementById('stk-price').value),
+        price: idx > -1 ? (db.stocks[idx].price || 0) : 0, // Preserve live-fetched price; defaults to 0 until API refresh
         cost: parseFloat(document.getElementById('stk-cost').value)
     };
     if (idx > -1) db.stocks[idx] = stockData;
@@ -1233,7 +1232,11 @@ window.fetchLiveQuotes = async function() {
 window.openCapSnapshot = function(dateStr) {
     const modal = document.getElementById('cap-snapshot-modal');
     const body  = document.getElementById('cap-snap-body');
-    const dateDisplay = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    
+    // Split YYYY-MM-DD manually for cross-browser stability (avoiding 'Invalid Date')
+    const parts = dateStr.split('-');
+    const dateObj = new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0); 
+    const dateDisplay = dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     document.getElementById('cap-snap-date').innerText = dateDisplay;
 
     // Pull all projected transactions up to and including this date
